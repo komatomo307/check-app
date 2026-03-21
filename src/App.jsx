@@ -65,7 +65,7 @@ export default function App() {
       return row[preferredHeader] ?? "";
     }
     const fallbackHeader = headers[fallbackIndex];
-    return fallbackHeader ? row[fallbackHeader] ?? "" : "";
+    return fallbackHeader ? (row[fallbackHeader] ?? "") : "";
   };
 
   const onUpload = (file) => {
@@ -158,23 +158,25 @@ export default function App() {
 
     const exportRows = likedRowIndexes.map((rowIndex) => {
       const original = rows[rowIndex];
-      const rowComments = comments[rowIndex] || [];
+      const persistedComments = comments[rowIndex] || [];
+      const pendingComment = (commentInput[rowIndex] || "").trim();
+      const rowComments = [
+        ...persistedComments,
+        ...(pendingComment ? [pendingComment] : []),
+      ]
+        .map((item) => item.trim())
+        .filter((item) => item.length > 0);
 
       return {
         ...original,
         liked: true,
-        comments: JSON.stringify(rowComments),
+        comments: rowComments.length > 0 ? JSON.stringify(rowComments) : "",
         checked_at: checkedAt[rowIndex] || "",
       };
     });
 
     const csv = Papa.unparse(exportRows, {
-      columns: [
-        ...headers,
-        "liked",
-        "comments",
-        "checked_at",
-      ],
+      columns: [...headers, "liked", "comments", "checked_at"],
     });
 
     downloadTextFile(csv, `${sourceName}_liked_rows_${nowStamp()}.csv`);
@@ -294,7 +296,11 @@ export default function App() {
                   <div className="card-actions">
                     <button
                       type="button"
-                      className={liked ? "toggle-btn heart-toggle active" : "toggle-btn heart-toggle"}
+                      className={
+                        liked
+                          ? "toggle-btn heart-toggle active"
+                          : "toggle-btn heart-toggle"
+                      }
                       onClick={() => toggleLike(rowIndex)}
                       aria-label={liked ? "いいねを取り消す" : "カードにいいね"}
                     >
@@ -308,7 +314,11 @@ export default function App() {
 
                     <button
                       type="button"
-                      className={checked ? "toggle-btn confirm-toggle active" : "toggle-btn confirm-toggle"}
+                      className={
+                        checked
+                          ? "toggle-btn confirm-toggle active"
+                          : "toggle-btn confirm-toggle"
+                      }
                       onClick={() => toggleRowChecked(rowIndex)}
                       aria-label={checked ? "確認を取り消す" : "確認済みにする"}
                     >

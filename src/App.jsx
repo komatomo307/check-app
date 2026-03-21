@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import Papa from "papaparse";
 
 const PAGE_SIZE = 1;
@@ -6,6 +6,56 @@ const FIELD_INDUSTRY = "業界";
 const FIELD_CASE = "事例名";
 const FIELD_DESCRIPTION = "その説明";
 const FIELD_GLOSSARY = "専門用語の解説";
+const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
+const TRAILING_PUNCTUATION = ".,!?;:)]}。、，．！？；：）」』】》〉";
+
+function splitTrailingPunctuation(rawUrl) {
+  let url = rawUrl;
+  let suffix = "";
+
+  while (url.length > 0) {
+    const lastChar = url[url.length - 1];
+    if (!TRAILING_PUNCTUATION.includes(lastChar)) {
+      break;
+    }
+    suffix = lastChar + suffix;
+    url = url.slice(0, -1);
+  }
+
+  return { url, suffix };
+}
+
+function renderTextWithLinks(text) {
+  if (!text) {
+    return "";
+  }
+
+  const parts = String(text).split(URL_PATTERN);
+  return parts.map((part, index) => {
+    if (index % 2 === 0) {
+      return <Fragment key={`text-${index}`}>{part}</Fragment>;
+    }
+
+    const { url, suffix } = splitTrailingPunctuation(part);
+    if (!url) {
+      return <Fragment key={`url-${index}`}>{part}</Fragment>;
+    }
+
+    return (
+      <Fragment key={`url-${index}`}>
+        <a
+          className="inline-link"
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {url}
+        </a>
+        {suffix}
+      </Fragment>
+    );
+  });
+}
 
 function downloadTextFile(text, fileName) {
   const blob = new Blob([text], { type: "text/csv;charset=utf-8;" });
@@ -259,7 +309,9 @@ export default function App() {
                   <p>{caseName}</p>
                 </div>
 
-                <p className="description">{description}</p>
+                <p className="description">
+                  {renderTextWithLinks(description)}
+                </p>
                 <p className="glossary">{glossary}</p>
 
                 <div className="comment-box card-comment-box">

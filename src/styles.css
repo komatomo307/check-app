@@ -214,6 +214,13 @@ button:disabled {
   word-break: break-word;
 }
 
+.inline-link {
+  color: #1f5ea8;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+}
+
 .glossary {
   margin: 0.9rem 0 0;
   line-height: 1.6;

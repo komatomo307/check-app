@@ -6,7 +6,7 @@ const FIELD_INDUSTRY = "業界";
 const FIELD_CASE = "事例名";
 const FIELD_DESCRIPTION = "その説明";
 const FIELD_GLOSSARY = "専門用語の解説";
-const URL_PATTERN = /(https?:\/\/[^\s]+)/g;
+const URL_PATTERN = /((?:https?:\/\/|www\.)[^\s<>"']+)/gi;
 const TRAILING_PUNCTUATION = ".,!?;:)]}。、，．！？；：）」』】》〉";
 
 function splitTrailingPunctuation(rawUrl) {
@@ -41,11 +41,13 @@ function renderTextWithLinks(text) {
       return <Fragment key={`url-${index}`}>{part}</Fragment>;
     }
 
+    const href = url.toLowerCase().startsWith("www.") ? `https://${url}` : url;
+
     return (
       <Fragment key={`url-${index}`}>
         <a
           className="inline-link"
-          href={url}
+          href={href}
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -312,7 +314,7 @@ export default function App() {
                 <p className="description">
                   {renderTextWithLinks(description)}
                 </p>
-                <p className="glossary">{glossary}</p>
+                <p className="glossary">{renderTextWithLinks(glossary)}</p>
 
                 <div className="comment-box card-comment-box">
                   <div className="comment-input-row">

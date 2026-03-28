@@ -80,6 +80,7 @@ function nowStamp() {
 export default function App() {
   const [headers, setHeaders] = useState([]);
   const [rows, setRows] = useState([]);
+  const [csvTextInput, setCsvTextInput] = useState("");
   const [sourceName, setSourceName] = useState("export");
   const [likedRows, setLikedRows] = useState({});
   const [comments, setComments] = useState({});
@@ -120,6 +121,31 @@ export default function App() {
     return fallbackHeader ? (row[fallbackHeader] ?? "") : "";
   };
 
+  const applyParsedData = (result, nextSourceName) => {
+    if (result.errors.length > 0) {
+      setError(`CSV解析エラー: ${result.errors[0].message}`);
+      return;
+    }
+
+    const parsedHeaders = result.meta.fields || [];
+    const parsedRows = result.data || [];
+    if (parsedHeaders.length === 0 || parsedRows.length === 0) {
+      setError("CSVのヘッダーまたはデータ行を確認してください。");
+      return;
+    }
+
+    setHeaders(parsedHeaders);
+    setRows(parsedRows);
+    setSourceName(nextSourceName || "export");
+    setLikedRows({});
+    setComments({});
+    setCommentInput({});
+    setCheckedRows({});
+    setCheckedAt({});
+    setPage(1);
+    setError("");
+  };
+
   const onUpload = (file) => {
     setError("");
     Papa.parse(file, {
@@ -127,19 +153,24 @@ export default function App() {
       skipEmptyLines: true,
       encoding: "utf-8",
       complete: (result) => {
-        if (result.errors.length > 0) {
-          setError(`CSV解析エラー: ${result.errors[0].message}`);
-          return;
-        }
-        setHeaders(result.meta.fields || []);
-        setRows(result.data || []);
-        setSourceName(file.name.replace(/\.csv$/i, "") || "export");
-        setLikedRows({});
-        setComments({});
-        setCommentInput({});
-        setCheckedRows({});
-        setCheckedAt({});
-        setPage(1);
+        const nextSourceName = file.name.replace(/\.csv$/i, "") || "export";
+        applyParsedData(result, nextSourceName);
+      },
+    });
+  };
+
+  const onLoadCsvText = () => {
+    const raw = csvTextInput.trim();
+    if (!raw) {
+      setError("平文CSVを入力してください。");
+      return;
+    }
+
+    Papa.parse(raw, {
+      header: true,
+      skipEmptyLines: true,
+      complete: (result) => {
+        applyParsedData(result, "pasted_csv");
       },
     });
   };
@@ -260,6 +291,23 @@ export default function App() {
             }
           }}
         />
+
+        <div className="csv-text-box">
+          <label className="file-label" htmlFor="csvTextInput">
+            CSV平文を貼り付け
+          </label>
+          <textarea
+            id="csvTextInput"
+            value={csvTextInput}
+            onChange={(event) => setCsvTextInput(event.target.value)}
+            placeholder="例: 1行目にヘッダーを含むCSVをそのまま貼り付け"
+            rows={6}
+          />
+          <button type="button" onClick={onLoadCsvText}>
+            平文CSVを読み込む
+          </button>
+        </div>
+
         {error && <p className="error">{error}</p>}
       </section>
 

@@ -66,6 +66,22 @@ body {
   font-weight: 700;
 }
 
+.csv-text-box {
+  margin-top: 0.9rem;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.csv-text-box textarea {
+  width: 100%;
+  border: 1px solid #bfd3eb;
+  border-radius: 10px;
+  padding: 0.6rem;
+  resize: vertical;
+  background: #ffffff;
+  line-height: 1.45;
+}
+
 .status-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

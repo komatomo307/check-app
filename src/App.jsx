@@ -1,4 +1,4 @@
-import { Fragment, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import Papa from "papaparse";
 
 const PAGE_SIZE = 1;
@@ -85,8 +85,7 @@ export default function App() {
   const [likedRows, setLikedRows] = useState({});
   const [comments, setComments] = useState({});
   const [commentInput, setCommentInput] = useState({});
-  const [checkedRows, setCheckedRows] = useState({});
-  const [checkedAt, setCheckedAt] = useState({});
+  const [reachedLastRow, setReachedLastRow] = useState(false);
   const [page, setPage] = useState(1);
   const [error, setError] = useState("");
 
@@ -99,12 +98,9 @@ export default function App() {
     return rows.slice(start, start + PAGE_SIZE);
   }, [page, rows]);
 
-  const allChecked = useMemo(() => {
-    if (rows.length === 0) {
-      return false;
-    }
-    return rows.every((_, idx) => checkedRows[idx]);
-  }, [rows, checkedRows]);
+  const canExport = useMemo(() => {
+    return rows.length > 0 && reachedLastRow;
+  }, [rows.length, reachedLastRow]);
 
   const likedRowIndexes = useMemo(() => {
     return Object.keys(likedRows)
@@ -120,6 +116,12 @@ export default function App() {
     const fallbackHeader = headers[fallbackIndex];
     return fallbackHeader ? (row[fallbackHeader] ?? "") : "";
   };
+
+  useEffect(() => {
+    if (rows.length > 0 && page === totalPages) {
+      setReachedLastRow(true);
+    }
+  }, [page, rows.length, totalPages]);
 
   const applyParsedData = (result, nextSourceName) => {
     if (result.errors.length > 0) {
@@ -140,8 +142,7 @@ export default function App() {
     setLikedRows({});
     setComments({});
     setCommentInput({});
-    setCheckedRows({});
-    setCheckedAt({});
+    setReachedLastRow(false);
     setPage(1);
     setError("");
   };
@@ -221,21 +222,8 @@ export default function App() {
     });
   };
 
-  const toggleRowChecked = (rowIndex) => {
-    setCheckedRows((prev) => {
-      const nextValue = !prev[rowIndex];
-      if (nextValue) {
-        setCheckedAt((old) => ({
-          ...old,
-          [rowIndex]: new Date().toISOString(),
-        }));
-      }
-      return { ...prev, [rowIndex]: nextValue };
-    });
-  };
-
   const exportCsv = () => {
-    if (!allChecked) {
+    if (!canExport) {
       return;
     }
 
@@ -254,12 +242,11 @@ export default function App() {
         ...original,
         liked: true,
         comments: rowComments.length > 0 ? JSON.stringify(rowComments) : "",
-        checked_at: checkedAt[rowIndex] || "",
       };
     });
 
     const csv = Papa.unparse(exportRows, {
-      columns: [...headers, "liked", "comments", "checked_at"],
+      columns: [...headers, "liked", "comments"],
     });
 
     downloadTextFile(csv, `${sourceName}_liked_rows_${nowStamp()}.csv`);
@@ -318,18 +305,15 @@ export default function App() {
             <p>{rows.length}</p>
           </div>
           <div>
-            <strong>確認済み</strong>
-            <p>
-              {Object.values(checkedRows).filter(Boolean).length} /{" "}
-              {rows.length}
-            </p>
+            <strong>最終行到達</strong>
+            <p>{reachedLastRow ? "到達済み" : "未到達"}</p>
           </div>
           <div>
             <strong>いいね対象行</strong>
             <p>{likedRowIndexes.length}</p>
           </div>
           <div>
-            <button type="button" disabled={!allChecked} onClick={exportCsv}>
+            <button type="button" disabled={!canExport} onClick={exportCsv}>
               抽出CSVをダウンロード
             </button>
           </div>
@@ -341,7 +325,6 @@ export default function App() {
           {pagedRows.map((row, offset) => {
             const rowIndex = (page - 1) * PAGE_SIZE + offset;
             const liked = Boolean(likedRows[rowIndex]);
-            const checked = Boolean(checkedRows[rowIndex]);
             const rowComments = comments[rowIndex] || [];
             const industry = getFieldValue(row, FIELD_INDUSTRY, 0);
             const caseName = getFieldValue(row, FIELD_CASE, 1);
@@ -412,19 +395,6 @@ export default function App() {
                           : String.fromCharCode(9825)}
                       </span>
                       <span>{liked ? "いいね ON" : "いいね OFF"}</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className={
-                        checked
-                          ? "toggle-btn confirm-toggle active"
-                          : "toggle-btn confirm-toggle"
-                      }
-                      onClick={() => toggleRowChecked(rowIndex)}
-                      aria-label={checked ? "確認を取り消す" : "確認済みにする"}
-                    >
-                      <span>{checked ? "確認 ON" : "確認 OFF"}</span>
                     </button>
                   </div>
                 </div>
